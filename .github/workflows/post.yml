@@ -1,0 +1,54 @@
+name: ADHD Strategy 自動投稿
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # 日本時間 9:00
+    - cron: '0 4 * * *'   # 日本時間 13:00
+    - cron: '0 11 * * *'  # 日本時間 20:00
+  workflow_dispatch:       # 手動実行も可能
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: パッケージインストール
+        run: |
+          pip install -r requirements.txt
+          pip install playwright
+          python -m playwright install chromium
+          python -m playwright install-deps chromium
+
+      - name: 投稿実行
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          THREADS_USERNAME: ${{ secrets.THREADS_USERNAME }}
+          THREADS_PASSWORD: ${{ secrets.THREADS_PASSWORD }}
+          THREADS_COOKIES: ${{ secrets.THREADS_COOKIES }}
+        run: python post.py
+
+      - name: 投稿ログをコミット
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add posts_log.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "投稿ログ更新 $(date '+%Y-%m-%d %H:%M')"
+          git push || true
+
+      - name: スクリーンショット保存（デバッグ用）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: "*.png"
+          if-no-files-found: ignore
