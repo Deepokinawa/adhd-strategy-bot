@@ -5,7 +5,7 @@ on:
     - cron: '0 0 * * *'   # 日本時間 9:00
     - cron: '0 4 * * *'   # 日本時間 13:00
     - cron: '0 11 * * *'  # 日本時間 20:00
-  workflow_dispatch:       # 手動実行も可能
+  workflow_dispatch:
 
 jobs:
   post:
@@ -22,18 +22,13 @@ jobs:
           python-version: '3.11'
 
       - name: パッケージインストール
-        run: |
-          pip install -r requirements.txt
-          pip install playwright
-          python -m playwright install chromium
-          python -m playwright install-deps chromium
+        run: pip install -r requirements.txt
 
       - name: 投稿実行
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          THREADS_USERNAME: ${{ secrets.THREADS_USERNAME }}
-          THREADS_PASSWORD: ${{ secrets.THREADS_PASSWORD }}
-          THREADS_COOKIES: ${{ secrets.THREADS_COOKIES }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python post.py
 
       - name: 投稿ログをコミット
@@ -44,11 +39,3 @@ jobs:
           git add posts_log.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "投稿ログ更新 $(date '+%Y-%m-%d %H:%M')"
           git push || true
-
-      - name: スクリーンショット保存（デバッグ用）
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: "*.png"
-          if-no-files-found: ignore
